@@ -1,0 +1,24 @@
+{
+  "name": "safetynet-scanner",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {},
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3",
+    "commander": "^12",
+    "isomorphic-git": "^1",
+    "smol-toml": "^1"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "vitest": "^2",
+    "@types/node": "^22"
+  }
+}

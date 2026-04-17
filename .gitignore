@@ -1,0 +1,10 @@
+node_modules/
+dist/
+
+training/.venv/
+training/models/
+training/data/ner_dataset.json
+
+safetynet/
+
+HANDOFF.md

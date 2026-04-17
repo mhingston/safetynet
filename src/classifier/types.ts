@@ -1,0 +1,43 @@
+export enum NerLabel {
+  O = "O",
+  B_CREDENTIAL = "B-CREDENTIAL",
+  I_CREDENTIAL = "I-CREDENTIAL",
+  B_CREDENTIAL_AWS = "B-CREDENTIAL-AWS",
+  I_CREDENTIAL_AWS = "I-CREDENTIAL-AWS",
+  B_CREDENTIAL_API_KEY = "B-CREDENTIAL-API-KEY",
+  I_CREDENTIAL_API_KEY = "I-CREDENTIAL-API-KEY",
+  B_CREDENTIAL_TOKEN = "B-CREDENTIAL-TOKEN",
+  I_CREDENTIAL_TOKEN = "I-CREDENTIAL-TOKEN",
+  B_CREDENTIAL_PASSWORD = "B-CREDENTIAL-PASSWORD",
+  I_CREDENTIAL_PASSWORD = "I-CREDENTIAL-PASSWORD",
+  B_CREDENTIAL_CONNECTION_STRING = "B-CREDENTIAL-CONNECTION-STRING",
+  I_CREDENTIAL_CONNECTION_STRING = "I-CREDENTIAL-CONNECTION-STRING",
+  B_CREDENTIAL_PRIVATE_KEY = "B-CREDENTIAL-PRIVATE-KEY",
+  I_CREDENTIAL_PRIVATE_KEY = "I-CREDENTIAL-PRIVATE-KEY",
+  B_CREDENTIAL_GENERIC = "B-CREDENTIAL-GENERIC",
+  I_CREDENTIAL_GENERIC = "I-CREDENTIAL-GENERIC",
+  B_INJECTION = "B-INJECTION",
+  I_INJECTION = "I-INJECTION",
+  B_ESCALATION = "B-ESCALATION",
+  I_ESCALATION = "I-ESCALATION",
+}
+
+export interface TokenClassification {
+  token: string;
+  label: NerLabel;
+  confidence: number;
+  start: number;
+  end: number;
+}
+
+export interface EntitySpan {
+  tokens: TokenClassification[];
+  entityGroup: string;
+  startLine: number;
+  endLine: number;
+  startColumn: number;
+  endColumn: number;
+  text: string;
+  averageConfidence: number;
+  maxConfidence: number;
+}
