@@ -1,0 +1,58 @@
+{
+  "experiment": "prowl-base-coarse",
+  "model": "answerdotai/ModernBERT-base",
+  "label_mode": "coarse",
+  "status": "pending",
+  "dataset": {
+    "id": "Podric/prowl-secrets-corpus",
+    "revision": "06f6d2cdf6a64c6d77ffb95a8dfb7abf7913b885",
+    "license": "CC BY-NC 4.0",
+    "train_rows": null,
+    "validation_rows": null,
+    "seed": 42
+  },
+  "prowlbench": {
+    "repository": "Lercas/prowlbench",
+    "revision": "53d6fc1e2006185c0fadd5cd761af3f1aacfd025",
+    "license": "PolyForm Noncommercial 1.0.0"
+  },
+  "training": {
+    "epochs": 3,
+    "learning_rate": 2e-05,
+    "batch_size": 8,
+    "seed": 42,
+    "commit_sha": null,
+    "hardware": null,
+    "training_time_s": null,
+    "peak_memory": null,
+    "model_size": null
+  },
+  "calibration": {
+    "threshold": null,
+    "min_precision": 0.95,
+    "validation_data": "training/data/prowl/validation.jsonl"
+  },
+  "metrics_validation": {
+    "precision": null,
+    "recall": null,
+    "f1": null,
+    "accuracy": null
+  },
+  "metrics_prowlbench": {
+    "precision": null,
+    "recall": null,
+    "f1": null,
+    "accuracy": null,
+    "t1_recall": null,
+    "t2_recall": null,
+    "t3_recall": null,
+    "t4_fp_rate": null
+  },
+  "reproduction": {
+    "prepare": "python training/data/prepare_prowl.py",
+    "train": "python training/finetune_ner.py --data training/data/prowl/train.jsonl --validation-data training/data/prowl/validation.jsonl --label-mode coarse --model answerdotai/ModernBERT-base --output training/models/prowl-base-coarse",
+    "calibrate": "python training/calibrate_threshold.py --model training/models/prowl-base-coarse --validation-data training/data/prowl/validation.jsonl --min-precision 0.95 --output training/models/prowl-base-coarse/threshold.json",
+    "benchmark": "python training/benchmark_prowl.py --model training/models/prowl-base-coarse --threshold <CALIBRATED_THRESHOLD> --output training/models/prowl-base-coarse/prowlbench.json"
+  },
+  "notes": "Pending GPU runner. Do not tune the threshold on ProwlBench. See training/results/README.md."
+}

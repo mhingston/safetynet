@@ -59,7 +59,8 @@ function toAllowlistConfig(config: SafetynetConfig): AllowlistConfig {
 async function runDirectoryScan(source: string, config: SafetynetConfig, opts: CommonOptions): Promise<void> {
   const { scanDirectory } = await import('../scanner/directory-scanner.js');
   const { chunkIntoFragments } = await import('../scanner/fragment-reader.js');
-  const { processFindings } = await import('../findings/processor.js');
+  const { classifyChunks } = await import('../scanner/scan-pipeline.js');
+  const { processFindings, deduplicateFindings } = await import('../findings/processor.js');
   const { createReporter } = await import('../report/reporter-factory.js');
   const { loadPipeline } = await import('../classifier/pipeline.js');
 
@@ -73,49 +74,22 @@ async function runDirectoryScan(source: string, config: SafetynetConfig, opts: C
     const content = await readFile(file, 'utf-8');
     const lines = content.split('\n');
     const chunks = chunkIntoFragments(lines);
-    for (const chunk of chunks) {
-      const text = chunk.lines.join('\n');
-      const { classifyFragment } = await import('../classifier/pipeline.js');
-      const { deriveRuleId } = await import('../classifier/rule-id.js');
-      const { NerLabel } = await import('../classifier/types.js');
-      try {
-        const tokens = await classifyFragment(text);
-        for (const token of tokens) {
-          if (token.label === NerLabel.O) continue;
-          allFindings.push({
-            ruleId: deriveRuleId(token.label),
-            description: `${token.label} detected`,
-            startLine: chunk.offsetLine + (token.start > 0 ? 0 : 0),
-            endLine: chunk.offsetLine,
-            startColumn: token.start,
-            endColumn: token.end,
-            match: token.token,
-            secret: token.token,
-            file,
-            commit: '',
-            author: '',
-            email: '',
-            date: '',
-            message: '',
-            entropy: 0,
-            fingerprint: '',
-            tags: [],
-            confidence: token.confidence,
-          });
-        }
-      } catch (err) {
-        if (opts.failOpen) {
-          continue;
-        }
-        throw err;
+    try {
+      const findings = await classifyChunks(chunks, { file });
+      allFindings.push(...findings);
+    } catch (err) {
+      if (opts.failOpen) {
+        continue;
       }
+      throw err;
     }
   }
 
-  const processed = processFindings(allFindings, {
+  const processed = deduplicateFindings(processFindings(allFindings, {
     allowlist: toAllowlistConfig(config),
     minConfidence: config.classifier.minConfidence,
-  });
+    threshold: config.classifier.threshold,
+  }));
 
   const reporter = createReporter(opts.reportFormat);
   const output = reporter.report(processed);
@@ -126,7 +100,8 @@ async function runDirectoryScan(source: string, config: SafetynetConfig, opts: C
 async function runProtectScan(source: string, config: SafetynetConfig, opts: CommonOptions): Promise<void> {
   const { ProtectScanner } = await import('../scanner/protect-scanner.js');
   const { chunkIntoFragments } = await import('../scanner/fragment-reader.js');
-  const { processFindings } = await import('../findings/processor.js');
+  const { classifyChunks } = await import('../scanner/scan-pipeline.js');
+  const { processFindings, deduplicateFindings } = await import('../findings/processor.js');
   const { createReporter } = await import('../report/reporter-factory.js');
   const { loadPipeline } = await import('../classifier/pipeline.js');
 
@@ -139,49 +114,22 @@ async function runProtectScan(source: string, config: SafetynetConfig, opts: Com
   for (const { filePath, content } of fileContents) {
     const lines = content.split('\n');
     const chunks = chunkIntoFragments(lines);
-    for (const chunk of chunks) {
-      const text = chunk.lines.join('\n');
-      const { classifyFragment } = await import('../classifier/pipeline.js');
-      const { deriveRuleId } = await import('../classifier/rule-id.js');
-      const { NerLabel } = await import('../classifier/types.js');
-      try {
-        const tokens = await classifyFragment(text);
-        for (const token of tokens) {
-          if (token.label === NerLabel.O) continue;
-          allFindings.push({
-            ruleId: deriveRuleId(token.label),
-            description: `${token.label} detected`,
-            startLine: chunk.offsetLine,
-            endLine: chunk.offsetLine,
-            startColumn: token.start,
-            endColumn: token.end,
-            match: token.token,
-            secret: token.token,
-            file: filePath,
-            commit: '',
-            author: '',
-            email: '',
-            date: '',
-            message: '',
-            entropy: 0,
-            fingerprint: '',
-            tags: [],
-            confidence: token.confidence,
-          });
-        }
-      } catch (err) {
-        if (opts.failOpen) {
-          continue;
-        }
-        throw err;
+    try {
+      const findings = await classifyChunks(chunks, { file: filePath });
+      allFindings.push(...findings);
+    } catch (err) {
+      if (opts.failOpen) {
+        continue;
       }
+      throw err;
     }
   }
 
-  const processed = processFindings(allFindings, {
+  const processed = deduplicateFindings(processFindings(allFindings, {
     allowlist: toAllowlistConfig(config),
     minConfidence: config.classifier.minConfidence,
-  });
+    threshold: config.classifier.threshold,
+  }));
 
   const reporter = createReporter(opts.reportFormat);
   const output = reporter.report(processed);
@@ -191,7 +139,8 @@ async function runProtectScan(source: string, config: SafetynetConfig, opts: Com
 
 async function runGitScan(source: string, config: SafetynetConfig, opts: CommonOptions & { commits?: string }): Promise<void> {
   const { GitScanner } = await import('../scanner/git-scanner.js');
-  const { processFindings } = await import('../findings/processor.js');
+  const { classifyGitFragment } = await import('../scanner/scan-pipeline.js');
+  const { processFindings, deduplicateFindings } = await import('../findings/processor.js');
   const { createReporter } = await import('../report/reporter-factory.js');
   const { loadPipeline } = await import('../classifier/pipeline.js');
 
@@ -205,34 +154,16 @@ async function runGitScan(source: string, config: SafetynetConfig, opts: CommonO
     if (opts.commits && !opts.commits.includes(commit.oid)) continue;
     const fragments = await scanner.getCommitDiff(commit.oid);
     for (const fragment of fragments) {
-      const { classifyFragment } = await import('../classifier/pipeline.js');
-      const { deriveRuleId } = await import('../classifier/rule-id.js');
-      const { NerLabel } = await import('../classifier/types.js');
       try {
-        const tokens = await classifyFragment(fragment.raw);
-        for (const token of tokens) {
-          if (token.label === NerLabel.O) continue;
-          allFindings.push({
-            ruleId: deriveRuleId(token.label),
-            description: `${token.label} detected`,
-            startLine: fragment.startLine,
-            endLine: fragment.startLine,
-            startColumn: token.start,
-            endColumn: token.end,
-            match: token.token,
-            secret: token.token,
-            file: fragment.filePath,
-            commit: fragment.commitSha,
-            author: fragment.authorName,
-            email: fragment.authorEmail,
-            date: fragment.commitDate,
-            message: fragment.commitMessage,
-            entropy: 0,
-            fingerprint: '',
-            tags: [],
-            confidence: token.confidence,
-          });
-        }
+        const findings = await classifyGitFragment(fragment.raw, fragment.startLine, {
+          file: fragment.filePath,
+          commit: fragment.commitSha,
+          author: fragment.authorName,
+          email: fragment.authorEmail,
+          date: fragment.commitDate,
+          message: fragment.commitMessage,
+        });
+        allFindings.push(...findings);
       } catch (err) {
         if (opts.failOpen) {
           continue;
@@ -242,10 +173,11 @@ async function runGitScan(source: string, config: SafetynetConfig, opts: CommonO
     }
   }
 
-  const processed = processFindings(allFindings, {
+  const processed = deduplicateFindings(processFindings(allFindings, {
     allowlist: toAllowlistConfig(config),
     minConfidence: config.classifier.minConfidence,
-  });
+    threshold: config.classifier.threshold,
+  }));
 
   const reporter = createReporter(opts.reportFormat);
   const output = reporter.report(processed);
@@ -256,7 +188,8 @@ async function runGitScan(source: string, config: SafetynetConfig, opts: CommonO
 async function runStdinScan(config: SafetynetConfig, opts: CommonOptions): Promise<void> {
   const { readStdin } = await import('../scanner/stdin-scanner.js');
   const { chunkIntoFragments } = await import('../scanner/fragment-reader.js');
-  const { processFindings } = await import('../findings/processor.js');
+  const { classifyChunks } = await import('../scanner/scan-pipeline.js');
+  const { processFindings, deduplicateFindings } = await import('../findings/processor.js');
   const { createReporter } = await import('../report/reporter-factory.js');
   const { loadPipeline } = await import('../classifier/pipeline.js');
 
@@ -267,48 +200,20 @@ async function runStdinScan(config: SafetynetConfig, opts: CommonOptions): Promi
   const chunks = chunkIntoFragments(lines);
   const allFindings: Finding[] = [];
 
-  for (const chunk of chunks) {
-    const text = chunk.lines.join('\n');
-    const { classifyFragment } = await import('../classifier/pipeline.js');
-    const { deriveRuleId } = await import('../classifier/rule-id.js');
-    const { NerLabel } = await import('../classifier/types.js');
-    try {
-      const tokens = await classifyFragment(text);
-      for (const token of tokens) {
-        if (token.label === NerLabel.O) continue;
-        allFindings.push({
-          ruleId: deriveRuleId(token.label),
-          description: `${token.label} detected`,
-          startLine: chunk.offsetLine,
-          endLine: chunk.offsetLine,
-          startColumn: token.start,
-          endColumn: token.end,
-          match: token.token,
-          secret: token.token,
-          file: 'stdin',
-          commit: '',
-          author: '',
-          email: '',
-          date: '',
-          message: '',
-          entropy: 0,
-          fingerprint: '',
-          tags: [],
-          confidence: token.confidence,
-        });
-      }
-    } catch (err) {
-      if (opts.failOpen) {
-        continue;
-      }
+  try {
+    const findings = await classifyChunks(chunks, { file: 'stdin' });
+    allFindings.push(...findings);
+  } catch (err) {
+    if (!opts.failOpen) {
       throw err;
     }
   }
 
-  const processed = processFindings(allFindings, {
+  const processed = deduplicateFindings(processFindings(allFindings, {
     allowlist: toAllowlistConfig(config),
     minConfidence: config.classifier.minConfidence,
-  });
+    threshold: config.classifier.threshold,
+  }));
 
   const reporter = createReporter(opts.reportFormat);
   const output = reporter.report(processed);

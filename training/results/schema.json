@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Safetynet hill-climb experiment record",
+  "type": "object",
+  "required": [
+    "experiment",
+    "model",
+    "label_mode",
+    "status",
+    "dataset",
+    "prowlbench",
+    "training",
+    "metrics_validation",
+    "reproduction"
+  ],
+  "properties": {
+    "experiment": { "type": "string" },
+    "model": { "type": "string" },
+    "label_mode": { "type": "string", "enum": ["binary", "coarse", "legacy"] },
+    "status": { "type": "string", "enum": ["pending", "validation", "protected-benchmark"] },
+    "dataset": {
+      "type": "object",
+      "required": ["id", "revision", "license", "train_rows", "validation_rows", "seed"],
+      "properties": {
+        "id": { "type": "string" },
+        "revision": { "type": "string" },
+        "license": { "type": "string" },
+        "train_rows": { "type": ["integer", "null"] },
+        "validation_rows": { "type": ["integer", "null"] },
+        "seed": { "type": "integer" }
+      }
+    },
+    "prowlbench": {
+      "type": "object",
+      "required": ["repository", "revision", "license"],
+      "properties": {
+        "repository": { "type": "string" },
+        "revision": { "type": "string" },
+        "license": { "type": "string" }
+      }
+    },
+    "training": {
+      "type": "object",
+      "required": ["epochs", "learning_rate", "batch_size", "seed", "commit_sha", "hardware"],
+      "properties": {
+        "epochs": { "type": "number" },
+        "learning_rate": { "type": "number" },
+        "batch_size": { "type": "integer" },
+        "seed": { "type": "integer" },
+        "commit_sha": { "type": ["string", "null"] },
+        "hardware": { "type": ["string", "null"] },
+        "training_time_s": { "type": ["number", "null"] },
+        "peak_memory": { "type": ["string", "null"] },
+        "model_size": { "type": ["string", "null"] }
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "properties": {
+        "threshold": { "type": ["number", "null"] },
+        "min_precision": { "type": "number" },
+        "validation_data": { "type": "string" }
+      }
+    },
+    "metrics_validation": {
+      "type": "object",
+      "properties": {
+        "precision": { "type": ["number", "null"] },
+        "recall": { "type": ["number", "null"] },
+        "f1": { "type": ["number", "null"] },
+        "accuracy": { "type": ["number", "null"] }
+      }
+    },
+    "metrics_prowlbench": {
+      "type": "object",
+      "properties": {
+        "precision": { "type": ["number", "null"] },
+        "recall": { "type": ["number", "null"] },
+        "f1": { "type": ["number", "null"] },
+        "accuracy": { "type": ["number", "null"] },
+        "t1_recall": { "type": ["number", "null"] },
+        "t2_recall": { "type": ["number", "null"] },
+        "t3_recall": { "type": ["number", "null"] },
+        "t4_fp_rate": { "type": ["number", "null"] }
+      }
+    },
+    "reproduction": {
+      "type": "object",
+      "required": ["prepare", "train", "calibrate", "benchmark"],
+      "properties": {
+        "prepare": { "type": "string" },
+        "train": { "type": "string" },
+        "calibrate": { "type": "string" },
+        "benchmark": { "type": "string" }
+      }
+    },
+    "notes": { "type": "string" }
+  }
+}

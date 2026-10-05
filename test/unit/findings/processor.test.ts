@@ -47,13 +47,13 @@ describe('processFindings', () => {
   it('assigns fingerprint to each finding', () => {
     const finding = f({ commit: 'abc123', file: 'src/config.ts', ruleId: 'credential-aws', startLine: 1 });
     const result = processFindings([finding], defaultOptions());
-    expect(result[0].fingerprint).toBe('abc123:src/config.ts:credential-aws:1');
+    expect(result[0].fingerprint).toBe('abc123:src/config.ts:credential-aws:1:0:1:12');
   });
 
   it('assigns fingerprint without commit when commit is empty', () => {
     const finding = f({ commit: '', file: 'src/app.ts', ruleId: 'credential-aws', startLine: 5 });
     const result = processFindings([finding], defaultOptions());
-    expect(result[0].fingerprint).toBe('src/app.ts:credential-aws:5');
+    expect(result[0].fingerprint).toBe('src/app.ts:credential-aws:5:0:1:12');
   });
 
   it('calculates entropy for each finding secret', () => {
@@ -112,7 +112,7 @@ describe('processFindings', () => {
 
   it('filters by ignoreFingerprints set', () => {
     const finding = f({ commit: 'abc123', file: 'src/config.ts', ruleId: 'credential-aws', startLine: 1 });
-    const ignoreSet = new Set(['abc123:src/config.ts:credential-aws:1']);
+    const ignoreSet = new Set(['abc123:src/config.ts:credential-aws:1:0:1:12']);
     const result = processFindings([finding], defaultOptions({ ignoreFingerprints: ignoreSet }));
     expect(result).toHaveLength(0);
   });
