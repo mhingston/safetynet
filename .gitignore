@@ -4,6 +4,7 @@ dist/
 training/.venv/
 training/models/
 training/data/ner_dataset.json
+training/data/prowl/
 
 safetynet/
 

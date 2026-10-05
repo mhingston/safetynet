@@ -158,28 +158,38 @@ Both `safetynet:allow` and `gitleaks:allow` are recognized, making migration fro
 
 ## Retraining the model
 
-If you want to fine-tune on your own data:
+The original synthetic generator remains available for smoke tests, but model selection
+should use the larger span-labelled Prowl corpus with an origin-disjoint validation set.
+The training pipeline removes exact ProwlBench overlaps before training and reports
+entity-level precision, recall and F1.
 
 ```bash
 cd training
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+cd ..
 
-# Generate synthetic training data (or provide your own)
-python3 data/generate_synthetic.py --output data/ner_dataset.json
+# Download/prepare a 100k-row hill-climb split.
+python training/data/prepare_prowl.py
 
-# Fine-tune ModernBERT-base
-python3 finetune_ner.py --data data/ner_dataset.json --epochs 3
+# Keep ModernBERT-base fixed first; compare coarse vs binary NER.
+python training/finetune_ner.py \
+  --data training/data/prowl/train.jsonl \
+  --validation-data training/data/prowl/validation.jsonl \
+  --label-mode coarse \
+  --model answerdotai/ModernBERT-base \
+  --output training/models/prowl-base-coarse
 
-# Export to ONNX with INT8 quantization
-python3 export_onnx.py --model models/safetynet-ner --quantize
-
-# Copy the quantized model to the bundled location
-cp models/safetynet-ner-onnx/onnx/model_quantized.onnx ../models/onnx/
-cp models/safetynet-ner-onnx/config.json ../models/
-cp models/safetynet-ner-onnx/tokenizer.json ../models/
-cp models/safetynet-ner-onnx/tokenizer_config.json ../models/
+# Calibrate on validation, then run the protected benchmark once.
+python training/calibrate_threshold.py \
+  --model training/models/prowl-base-coarse \
+  --validation-data training/data/prowl/validation.jsonl \
+  --min-precision 0.95
 ```
+
+See [training/README.md](training/README.md) for the full hill-climb protocol,
+including binary-vs-coarse labels, ProwlBench evaluation and the point at which to
+try ModernBERT-large.
 
 ## Development
 
@@ -192,4 +202,9 @@ npm run test:watch   # Watch mode
 
 ## License
 
-MIT
+The safetynet source code is MIT.
+
+The recommended Prowl training corpus is CC BY-NC 4.0. Training data is downloaded
+at training time and is not vendored in this repository. A future bundled model
+trained from that corpus must carry compatible non-commercial attribution/restrictions;
+see [training/DATASETS.md](training/DATASETS.md).
