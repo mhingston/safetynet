@@ -3,8 +3,8 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("@huggingface/transformers", () => ({
   pipeline: vi.fn().mockResolvedValue(
     async (text: string) => [
-      { entity_group: "CREDENTIAL-AWS", score: 0.92, word: "AKIAIOSF", start: 0, end: 8 },
-      { entity_group: "CREDENTIAL-AWS", score: 0.90, word: "ODNN7EX", start: 8, end: 15 },
+      { entity: "B-CREDENTIAL-AWS", score: 0.92, word: "AKIAIOSF", start: 0, end: 8 },
+      { entity: "I-CREDENTIAL-AWS", score: 0.90, word: "ODNN7EX", start: 8, end: 15 },
     ]
   ),
 }));

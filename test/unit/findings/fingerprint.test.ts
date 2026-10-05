@@ -14,11 +14,16 @@ describe('generateFingerprint', () => {
   it('creates commit-based fingerprint', () => {
     const f = baseFinding({ commit: 'abc123' });
     const fp = generateFingerprint(f);
-    expect(fp).toBe('abc123:src/config.ts:credential-aws:10');
+    expect(fp).toBe('abc123:src/config.ts:credential-aws:10:0:10:20');
   });
   it('creates global fingerprint when no commit', () => {
     const f = baseFinding({ commit: '' });
     const fp = generateFingerprint(f);
-    expect(fp).toBe('src/config.ts:credential-aws:10');
+    expect(fp).toBe('src/config.ts:credential-aws:10:0:10:20');
+  });
+  it('distinguishes two findings on the same line by column', () => {
+    const a = baseFinding({ commit: '', startColumn: 0, endColumn: 10 });
+    const b = baseFinding({ commit: '', startColumn: 20, endColumn: 30 });
+    expect(generateFingerprint(a)).not.toBe(generateFingerprint(b));
   });
 });
