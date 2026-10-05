@@ -4,3 +4,5 @@ datasets>=2.16
 accelerate>=0.25
 optimum[onnxruntime]>=1.16
 onnxruntime>=1.17
+numpy>=1.26
+seqeval>=1.2
