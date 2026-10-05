@@ -17,6 +17,7 @@ from transformers import (
     DataCollatorForTokenClassification,
     Trainer,
     TrainingArguments,
+    set_seed,
 )
 
 
@@ -349,6 +350,10 @@ def main() -> None:
     label_list = label_list_for_mode(args.label_mode)
     label2id = {label: i for i, label in enumerate(label_list)}
     id2label = {i: label for i, label in enumerate(label_list)}
+
+    # Seed before from_pretrained: the token-classification head is initialized here,
+    # before Trainer has a chance to apply TrainingArguments.seed.
+    set_seed(args.seed)
 
     print(f"Loading model: {args.model}")
     tokenizer = AutoTokenizer.from_pretrained(args.model, use_fast=True)
