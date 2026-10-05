@@ -89,6 +89,19 @@ def main() -> None:
     parser.add_argument("--output")
     args = parser.parse_args()
 
+    if args.step <= 0:
+        parser.error("--step must be greater than 0")
+    if not 0.0 <= args.min_threshold <= 1.0:
+        parser.error("--min-threshold must be between 0 and 1")
+    if not 0.0 <= args.max_threshold <= 1.0:
+        parser.error("--max-threshold must be between 0 and 1")
+    if args.min_threshold > args.max_threshold:
+        parser.error("--min-threshold must not exceed --max-threshold")
+    if not 0.0 <= args.min_precision <= 1.0:
+        parser.error("--min-precision must be between 0 and 1")
+    if args.batch_size <= 0:
+        parser.error("--batch-size must be greater than 0")
+
     rows = load_jsonl(args.validation_data)
     labels = [bool(int(row.get("label_binary", 0) or 0)) for row in rows]
     texts = [str(row["text"]) for row in rows]
@@ -109,9 +122,17 @@ def main() -> None:
     qualifying = [
         result for result in candidates if float(result["precision"]) >= args.min_precision
     ]
-    pool = qualifying or candidates
+    if not qualifying:
+        best_precision = max(float(result["precision"]) for result in candidates)
+        raise SystemExit(
+            "No threshold satisfies "
+            f"--min-precision={args.min_precision:.3f}; "
+            f"best observed precision was {best_precision:.3f}. "
+            "Lower the precision floor or improve the model before benchmarking."
+        )
+
     best = max(
-        pool,
+        qualifying,
         key=lambda result: (
             float(result["f1"]),
             float(result["recall"]),
